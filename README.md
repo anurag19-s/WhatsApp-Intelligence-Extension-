@@ -19,7 +19,7 @@ npm install
 Copy-Item apps\backend\.env.example apps\backend\.env
 ```
 
-Edit `apps\backend\.env` and set `ANTHROPIC_API_KEY` to your own key. Do not put the key in extension files or commit `.env`. With `AI_PROVIDER=auto`, the backend selects Anthropic when the key is non-empty and otherwise uses a clearly labelled, non-interpretive mock response. `AI_ALLOW_MOCK_FALLBACK` is `false` by default, so failed Claude requests are errors rather than mock reports. Set it to `true` only if you explicitly want mock output after provider failure.
+Edit `apps\backend\.env` to configure a provider. Do not put credentials in extension files or commit `.env`. With `AI_PROVIDER=auto`, the backend selects Anthropic when the key is non-empty and otherwise uses a clearly labelled, non-interpretive mock response. This automatic selection is unchanged. Set `AI_PROVIDER=ollama` to use a local Ollama server; Ollama is never silently replaced by Mock when unavailable. Its default base URL and model are `http://127.0.0.1:11434` and `qwen2.5:3b`; set `AI_TIMEOUT_MS=120000` for longer local generation. Ollama's URL is restricted to HTTP on `localhost` or `127.0.0.1`. `AI_ALLOW_MOCK_FALLBACK` is `false` by default and controls only the existing Anthropic-to-Mock fallback.
 
 The default model is `claude-sonnet-5-5` (the Anthropic API ID listed in [Anthropic's model overview](https://platform.claude.com/docs/en/models/overview)); override it with `ANTHROPIC_MODEL`. The backend reads the `.env` next to its package regardless of the current terminal directory.
 
@@ -29,7 +29,7 @@ Start the backend from the repository root:
 npm run backend:start
 ```
 
-The service binds to `127.0.0.1:3000`. Check `http://127.0.0.1:3000/health`. To test the backend and extension helpers:
+The service binds to `127.0.0.1:3001` by default. Check `http://127.0.0.1:3001/health`. The port can be changed with `PORT`; configure the extension's Backend URL in its popup to match. To test the backend and extension helpers:
 
 ```powershell
 npm test
@@ -50,7 +50,7 @@ If extension files change, reload the unpacked extension from the browser extens
 
 ## Provider and response behavior
 
-The analysis request uses `POST /api/analyze`, is validated on the backend, and sends only the selected message fields. The Anthropic key stays in the backend process. Reports include provider/model metadata, mock status, evidence source indices, and confidence labels. Claude output must be JSON matching the report schema; invalid or incomplete output is rejected. Mock responses are marked `isMock: true` and deliberately do not invent findings.
+The analysis request uses `POST /api/analyze`, is validated on the backend, and sends only the selected message fields. The Anthropic key stays in the backend process. Only the Node backend communicates with Anthropic or the loopback Ollama service; the extension communicates only with the backend. Reports include provider/model metadata, mock status, evidence source indices, and confidence labels. Anthropic and Ollama output must be JSON matching the report schema; invalid or incomplete output is rejected. Mock responses are marked `isMock: true` and deliberately do not invent findings.
 
 The backend permits browser-origin requests only from Chromium extension origins, and validates loopback Host headers. Health checks and local command-line tests may omit an Origin header. No message bodies or API keys are logged.
 
@@ -59,9 +59,11 @@ The backend permits browser-origin requests only from Chromium extension origins
 | Variable | Default | Purpose |
 |---|---|---|
 | `HOST` | `127.0.0.1` | Must remain loopback-only |
-| `PORT` | `3000` | Local backend port |
-| `AI_PROVIDER` | `auto` | `auto`, `anthropic`, or `mock` |
+| `PORT` | `3001` | Local backend port |
+| `AI_PROVIDER` | `auto` | `auto`, `anthropic`, `ollama`, or `mock` |
 | `ANTHROPIC_API_KEY` | empty | Backend-only Claude credential |
 | `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Anthropic API model ID |
-| `AI_TIMEOUT_MS` | `45000` | Claude request timeout |
-| `AI_ALLOW_MOCK_FALLBACK` | `false` | Explicitly permit mock report after Claude failure |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama HTTP base URL (only `localhost` or `127.0.0.1`) |
+| `OLLAMA_MODEL` | `qwen2.5:3b` | Local Ollama model name |
+| `AI_TIMEOUT_MS` | `45000` | AI request timeout (set `120000` for Ollama) |
+| `AI_ALLOW_MOCK_FALLBACK` | `false` | Explicitly permit mock report after Anthropic failure |

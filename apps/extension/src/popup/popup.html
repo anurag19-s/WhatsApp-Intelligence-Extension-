@@ -16,10 +16,13 @@
       <div class="status-card">
         <p><strong>Backend Status:</strong> <span id="backend-status">Checking...</span></p>
       </div>
+      <label for="backend-url">Local backend URL</label>
+      <input id="backend-url" type="url" value="http://127.0.0.1:3001" autocomplete="url">
+      <button id="save-backend-url-btn" class="secondary-btn">Save URL</button>
+      <p id="backend-url-status" class="config-status" aria-live="polite"></p>
       <button id="open-sidepanel-btn" class="primary-btn">Open Intelligence Panel</button>
     </main>
   </div>
   <script src="popup.js"></script>
 </body>
 </html>
-

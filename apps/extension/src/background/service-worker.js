@@ -6,8 +6,45 @@
 
 'use strict';
 
-const BACKEND_BASE_URL = 'http://127.0.0.1:3000';
-const DEFAULT_TIMEOUT_MS = 55000;
+const DEFAULT_BACKEND_BASE_URL = 'http://127.0.0.1:3001';
+const DEFAULT_TIMEOUT_MS = 125000;
+
+function normalizeBackendBaseUrl(value) {
+  var url;
+  try {
+    url = new URL(value);
+  } catch (err) {
+    throw new Error('Backend URL must be an HTTP URL on localhost or 127.0.0.1.');
+  }
+  if (
+    url.protocol !== 'http:' ||
+    (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') ||
+    url.username ||
+    url.password ||
+    (url.pathname !== '' && url.pathname !== '/') ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error('Backend URL must be an HTTP URL on localhost or 127.0.0.1.');
+  }
+  return url.origin;
+}
+
+function getBackendBaseUrl() {
+  return new Promise(function (resolve, reject) {
+    chrome.storage.local.get({ backendBaseUrl: DEFAULT_BACKEND_BASE_URL }, function (settings) {
+      if (chrome.runtime.lastError) {
+        reject(new Error('Could not read the saved backend URL.'));
+        return;
+      }
+      try {
+        resolve(normalizeBackendBaseUrl(settings.backendBaseUrl));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
 
 // Enable side panel on extension icon click where supported
 if (typeof chrome !== 'undefined' && chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
@@ -45,7 +82,8 @@ async function checkBackendHealth() {
   var timeoutId = setTimeout(function () { controller.abort(); }, 4000);
 
   try {
-    var response = await fetch(BACKEND_BASE_URL + '/health', {
+    var backendBaseUrl = await getBackendBaseUrl();
+    var response = await fetch(backendBaseUrl + '/health', {
       method: 'GET',
       signal: controller.signal,
     });
@@ -65,7 +103,7 @@ async function checkBackendHealth() {
     return {
       ok: false,
       connected: false,
-      error: 'Backend offline at ' + BACKEND_BASE_URL + '. Start it using `npm run backend:start`.',
+      error: 'Backend offline. Check that the backend is running and the saved Backend URL is correct.',
     };
   }
 }
@@ -88,6 +126,13 @@ async function analyzeSelectedMessages(payload) {
 
   var controller = new AbortController();
   var timeoutId = setTimeout(function () { controller.abort(); }, DEFAULT_TIMEOUT_MS);
+  var backendBaseUrl;
+  try {
+    backendBaseUrl = await getBackendBaseUrl();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    return { ok: false, error: err.message };
+  }
   var requestPayload = {
     conversation: payload.conversation,
     messages: payload.messages.map(function (message) {
@@ -102,7 +147,7 @@ async function analyzeSelectedMessages(payload) {
   };
 
   try {
-    var response = await fetch(BACKEND_BASE_URL + '/api/analyze', {
+    var response = await fetch(backendBaseUrl + '/api/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -141,8 +186,8 @@ async function analyzeSelectedMessages(payload) {
     }
     return {
       ok: false,
-      error: 'Could not connect to local backend at ' + BACKEND_BASE_URL +
-             '. Ensure the backend is running (`npm run backend:start`).',
+      error: 'Could not connect to local backend at ' + backendBaseUrl +
+             '. Ensure the backend is running (`npm run backend:start`) and the URL is correct.',
     };
   }
 }

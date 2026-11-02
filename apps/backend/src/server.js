@@ -4,6 +4,7 @@ const http = require('node:http');
 const path = require('node:path');
 const dotenv = require('dotenv');
 const { createAnalysisService } = require('./services');
+const { normalizeOllamaBaseUrl } = require('./ai');
 const { handleAnalyzeRequest } = require('./routes');
 const { isAllowedOrigin, setCorsHeaders } = require('./middleware');
 
@@ -19,10 +20,12 @@ function readConfig(env) {
   const provider = configuredProvider === 'auto'
     ? (apiKey ? 'anthropic' : 'mock')
     : configuredProvider;
-  const port = Number(env.PORT || 3000);
+  const port = Number(env.PORT || 3001);
   const host = env.HOST || '127.0.0.1';
   const timeoutMs = Number(env.AI_TIMEOUT_MS || 45000);
   const allowFallback = env.AI_ALLOW_MOCK_FALLBACK === 'true';
+  const ollamaBaseUrl = env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
+  const ollamaModel = (env.OLLAMA_MODEL || 'qwen2.5:3b').trim();
 
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     throw new Error('PORT must be an integer between 0 and 65535.');
@@ -30,11 +33,17 @@ function readConfig(env) {
   if (host !== '127.0.0.1') {
     throw new Error('HOST must be 127.0.0.1 to keep the backend loopback-only.');
   }
-  if (provider !== 'anthropic' && provider !== 'mock') {
-    throw new Error('AI_PROVIDER must be auto, anthropic, or mock.');
+  if (provider !== 'anthropic' && provider !== 'mock' && provider !== 'ollama') {
+    throw new Error('AI_PROVIDER must be auto, anthropic, mock, or ollama.');
   }
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 120000) {
     throw new Error('AI_TIMEOUT_MS must be between 1000 and 120000.');
+  }
+  if (provider === 'ollama') {
+    normalizeOllamaBaseUrl(ollamaBaseUrl);
+    if (!ollamaModel) {
+      throw new Error('OLLAMA_MODEL must be a non-empty model name.');
+    }
   }
 
   return {
@@ -43,6 +52,8 @@ function readConfig(env) {
     provider,
     apiKey,
     model: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+    ollamaBaseUrl,
+    ollamaModel,
     timeoutMs,
     allowFallback,
   };
@@ -64,7 +75,7 @@ function sendJson(res, status, data) {
 
 function requestHostIsLoopback(hostHeader) {
   if (!hostHeader) return false;
-  return /^127\.0\.0\.1(?::\d{1,5})?$/.test(hostHeader);
+  return /^(?:127\.0\.0\.1|localhost)(?::\d{1,5})?$/.test(hostHeader);
 }
 
 function createServer(options) {
@@ -106,7 +117,11 @@ function createServer(options) {
         service: 'wa-corporate-intelligence-backend',
         timestamp: new Date().toISOString(),
         provider: serverConfig.provider,
-        model: serverConfig.provider === 'anthropic' ? serverConfig.model : 'local-mock-v1',
+        model: serverConfig.provider === 'anthropic'
+          ? serverConfig.model
+          : serverConfig.provider === 'ollama'
+            ? serverConfig.ollamaModel
+            : 'local-mock-v1',
         hasAnthropicKey: Boolean(serverConfig.apiKey),
       });
       return;
@@ -129,7 +144,15 @@ function createServer(options) {
 if (require.main === module) {
   const server = createServer();
   server.listen(config.port, config.host, () => {
-    console.log('[WA Corporate Intelligence Backend] Listening on http://' + config.host + ':' + config.port);
+    const model = config.provider === 'ollama'
+      ? config.ollamaModel
+      : config.provider === 'anthropic'
+        ? config.model
+        : 'local-mock-v1';
+    console.log(
+      '[WA Corporate Intelligence Backend] Listening on http://' + config.host + ':' + config.port +
+      ' (provider: ' + config.provider + ', model: ' + model + ')'
+    );
   });
   server.on('error', (error) => {
     console.error('[WA Corporate Intelligence Backend] Failed to start: ' + error.message);

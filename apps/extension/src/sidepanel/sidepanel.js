@@ -58,7 +58,11 @@
         return;
       }
       if (res && res.connected) {
-        setBackendBadge(true, 'Backend Online');
+        var data = res.data || {};
+        setBackendBadge(
+          true,
+          data.provider && data.model ? data.provider + ': ' + data.model : 'Backend Online'
+        );
       } else {
         setBackendBadge(false, 'Backend Offline');
       }
@@ -70,7 +74,7 @@
     els.backendIndicator.className = 'backend-badge ' + (isOnline ? 'online' : 'offline');
     els.backendIndicator.textContent = text;
     els.backendIndicator.title = isOnline
-      ? 'Connected to local backend (http://127.0.0.1:3000)'
+      ? 'Connected to configured loopback backend. Active provider/model: ' + text
       : 'Local backend server is offline. Run `npm run backend:start` in terminal.';
   }
 
@@ -408,6 +412,10 @@
     });
 
     state.isAnalyzing = true;
+    state.lastReport = null;
+    els.reportContent.textContent = '';
+    els.viewTabs.hidden = true;
+    switchView('messages');
     els.analyzeBtn.disabled = true;
     els.extractBtn.disabled = true;
     els.analysisProgress.hidden = false;
@@ -460,7 +468,12 @@
       );
 
       // Refresh backend badge
-      setBackendBadge(true, 'Backend Online');
+      setBackendBadge(
+        true,
+        report.meta && report.meta.provider && report.meta.model
+          ? report.meta.provider + ': ' + report.meta.model
+          : 'Backend Online'
+      );
     });
   }
 

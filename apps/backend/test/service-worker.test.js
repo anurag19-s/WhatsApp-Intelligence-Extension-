@@ -20,6 +20,13 @@ function loadWorker(options) {
       onInstalled: { addListener: () => {} },
       onMessage: { addListener: (listener) => { onMessage = listener; } },
     },
+    storage: {
+      local: {
+        get: (defaults, callback) => callback({
+          backendBaseUrl: settings.backendBaseUrl || defaults.backendBaseUrl,
+        }),
+      },
+    },
     tabs: {
       query: async () => {
         tabQueries += 1;
@@ -66,6 +73,7 @@ test('service worker forwards only selected analysis fields and handles backend 
     type: 'ANALYZE_SELECTED_MESSAGES',
     payload: {
       conversation: { title: 'Planning', chatType: 'group' },
+      unselectedMessages: [{ id: 'm2', text: 'Not selected' }],
       messages: [{
         id: 'm1',
         text: 'Selected',
@@ -78,11 +86,64 @@ test('service worker forwards only selected analysis fields and handles backend 
     },
   });
   assert.equal(response.ok, true);
-  assert.equal(requested.url, 'http://127.0.0.1:3000/api/analyze');
+  assert.equal(requested.url, 'http://127.0.0.1:3001/api/analyze');
   assert.deepEqual(Object.keys(requested.payload.messages[0]).sort(), [
     'direction', 'id', 'sender', 'text', 'timestamp',
   ]);
   assert.equal(requested.payload.messages.length, 1);
+  assert.equal(Object.hasOwn(requested.payload, 'unselectedMessages'), false);
+});
+
+test('service worker uses a saved loopback backend URL and surfaces provider health', async () => {
+  const requestedUrls = [];
+  const worker = loadWorker({
+    backendBaseUrl: 'http://localhost:3010/',
+    fetch: async (url) => {
+      requestedUrls.push(url);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'ok', provider: 'ollama', model: 'qwen2.5:3b' }),
+        text: async () => JSON.stringify({
+          ok: true,
+          data: { meta: { provider: 'ollama', model: 'qwen2.5:3b', isMock: false } },
+        }),
+      };
+    },
+  });
+  const health = await worker.dispatch({ type: 'CHECK_BACKEND_HEALTH' });
+  assert.equal(health.connected, true);
+  assert.equal(health.data.provider, 'ollama');
+  const analysis = await worker.dispatch({
+    type: 'ANALYZE_SELECTED_MESSAGES',
+    payload: {
+      conversation: { title: 'Planning', chatType: 'group' },
+      messages: [{ id: 'm1', text: 'Selected', sender: 'Asha', timestamp: null, direction: 'unknown' }],
+    },
+  });
+  assert.equal(analysis.data.meta.provider, 'ollama');
+  assert.deepEqual(requestedUrls, [
+    'http://localhost:3010/health',
+    'http://localhost:3010/api/analyze',
+  ]);
+});
+
+test('service worker rejects a non-loopback backend URL without sending requests', async () => {
+  let fetchCalls = 0;
+  const worker = loadWorker({
+    backendBaseUrl: 'http://example.com',
+    fetch: async () => { fetchCalls += 1; },
+  });
+  const response = await worker.dispatch({
+    type: 'ANALYZE_SELECTED_MESSAGES',
+    payload: {
+      conversation: { title: 'Planning', chatType: 'group' },
+      messages: [{ id: 'm1', text: 'Selected', sender: 'Asha', timestamp: null, direction: 'unknown' }],
+    },
+  });
+  assert.equal(response.ok, false);
+  assert.match(response.error, /localhost or 127\.0\.0\.1/);
+  assert.equal(fetchCalls, 0);
 });
 
 test('service worker propagates backend validation errors and hides malformed response bodies', async () => {

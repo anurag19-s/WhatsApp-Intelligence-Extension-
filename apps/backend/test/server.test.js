@@ -44,10 +44,36 @@ async function withServer(run, overrides) {
 }
 
 test('loads only loopback host and resolves provider configuration', () => {
+  assert.equal(readConfig({}).port, 3001);
   assert.equal(readConfig({}).host, '127.0.0.1');
   assert.equal(readConfig({}).provider, 'mock');
   assert.equal(readConfig({ ANTHROPIC_API_KEY: 'configured' }).provider, 'anthropic');
+  assert.equal(readConfig({ AI_PROVIDER: 'auto', ANTHROPIC_API_KEY: 'configured' }).provider, 'anthropic');
+  const ollama = readConfig({ AI_PROVIDER: 'ollama', AI_TIMEOUT_MS: '120000' });
+  assert.equal(ollama.provider, 'ollama');
+  assert.equal(ollama.ollamaBaseUrl, 'http://127.0.0.1:11434');
+  assert.equal(ollama.ollamaModel, 'qwen2.5:3b');
+  assert.equal(ollama.timeoutMs, 120000);
+  assert.equal(readConfig({
+    AI_PROVIDER: 'ollama',
+    OLLAMA_BASE_URL: 'http://localhost:11434/',
+    OLLAMA_MODEL: 'custom-model',
+  }).ollamaModel, 'custom-model');
   assert.throws(() => readConfig({ HOST: '0.0.0.0' }), /loopback-only/);
+});
+
+test('rejects Ollama URLs outside local HTTP and missing model configuration', () => {
+  for (const url of [
+    'https://127.0.0.1:11434',
+    'http://example.com:11434',
+    'http://127.0.0.1.evil.example:11434',
+    'http://user@127.0.0.1:11434',
+    'http://127.0.0.1:11434/api',
+  ]) {
+    assert.throws(() => readConfig({ AI_PROVIDER: 'ollama', OLLAMA_BASE_URL: url }), /OLLAMA_BASE_URL/);
+  }
+  assert.throws(() => readConfig({ AI_PROVIDER: 'ollama', OLLAMA_MODEL: '  ' }), /OLLAMA_MODEL/);
+  assert.throws(() => readConfig({ AI_PROVIDER: 'ollama', AI_TIMEOUT_MS: '120001' }), /AI_TIMEOUT_MS/);
 });
 
 test('health endpoint reports provider metadata without secrets', async () => {
@@ -58,6 +84,20 @@ test('health endpoint reports provider metadata without secrets', async () => {
     assert.equal(body.provider, 'mock');
     assert.equal(body.hasAnthropicKey, false);
     assert.equal(Object.hasOwn(body, 'apiKey'), false);
+  });
+});
+
+test('health endpoint reports configured Ollama provider and model', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(baseUrl + '/health');
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.provider, 'ollama');
+    assert.equal(body.model, 'qwen2.5:3b');
+  }, {
+    provider: 'ollama',
+    ollamaBaseUrl: 'http://127.0.0.1:11434',
+    ollamaModel: 'qwen2.5:3b',
   });
 });
 
@@ -137,6 +177,15 @@ test('rejects web-page origins but permits a Chromium extension origin', async (
       allowed.headers.get('access-control-allow-origin'),
       'chrome-extension://abcdefghijklmnopabcdefghijklmnop'
     );
+  });
+});
+
+test('accepts localhost Host headers for configured loopback backends', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(baseUrl + '/health', {
+      headers: { host: 'localhost:' + new URL(baseUrl).port },
+    });
+    assert.equal(response.status, 200);
   });
 });
 

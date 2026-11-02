@@ -1,6 +1,6 @@
 'use strict';
 
-const { createAnthropicProvider } = require('../ai');
+const { createAnthropicProvider, createOllamaProvider } = require('../ai');
 
 const MAX_MESSAGES = 100;
 const MAX_TEXT_LENGTH = 10000;
@@ -110,7 +110,7 @@ function createMockReport(conversation, messages, warning) {
       provider: 'mock',
       model: 'local-mock-v1',
       isMock: true,
-      warning: warning || 'This report is a non-interpretive mock response. Configure the Anthropic provider to generate findings.',
+      warning: warning || 'This report is a non-interpretive mock response. Configure an AI provider to generate findings.',
     },
   };
 }
@@ -118,18 +118,24 @@ function createMockReport(conversation, messages, warning) {
 function createAnalysisService(config, options) {
   const settings = options || {};
   const callAnthropic = settings.callAnthropic || createAnthropicProvider();
+  const callOllama = settings.callOllama || createOllamaProvider();
 
   return async function analyze(payload) {
     const normalized = normalizeRequest(payload);
     if (config.provider === 'mock') {
       return createMockReport(normalized.conversation, normalized.messages);
     }
-    if (!config.apiKey) {
+    if (config.provider === 'anthropic' && !config.apiKey) {
       throw new AnalysisServiceError('Anthropic is selected but ANTHROPIC_API_KEY is not configured.', 503);
+    }
+    if (config.provider !== 'anthropic' && config.provider !== 'ollama') {
+      throw new AnalysisServiceError('The selected AI provider is not supported.', 503);
     }
 
     try {
-      const report = await callAnthropic(config, normalized.conversation, normalized.messages);
+      const report = config.provider === 'ollama'
+        ? await callOllama(config, normalized.conversation, normalized.messages)
+        : await callAnthropic(config, normalized.conversation, normalized.messages);
       const generatedAt = new Date().toISOString();
       return Object.assign({}, report, {
         meta: {
@@ -137,12 +143,19 @@ function createAnalysisService(config, options) {
           generatedAt,
           selectedCount: normalized.messages.length,
           conversationTitle: normalized.conversation.title,
-          provider: 'anthropic',
-          model: config.model,
+          provider: config.provider,
+          model: config.provider === 'ollama' ? config.ollamaModel : config.model,
           isMock: false,
         },
       });
     } catch (error) {
+      if (config.provider === 'ollama') {
+        const timedOut = error.message === 'AI request timed out.';
+        throw new AnalysisServiceError(
+          timedOut ? 'Ollama analysis timed out.' : error.message,
+          timedOut ? 504 : 502
+        );
+      }
       if (!config.allowFallback) {
         const timedOut = error.message === 'AI request timed out.';
         throw new AnalysisServiceError(
