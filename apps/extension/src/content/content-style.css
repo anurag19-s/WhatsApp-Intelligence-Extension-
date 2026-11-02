@@ -1,0 +1,8 @@
+
+/* WA Corporate Intelligence - Content Styles */
+/* Styles for injected overlays will be scoped to avoid interfering with WhatsApp Web */
+.waci-overlay-root {
+  all: initial;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+

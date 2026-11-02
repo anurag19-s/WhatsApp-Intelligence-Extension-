@@ -1,0 +1,26 @@
+{
+  "name": "wa-corporate-intelligence",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-browser Chrome and Brave extension with local Node.js backend for WhatsApp intelligence summaries.",
+  "scripts": {
+    "backend:start": "node apps/backend/src/server.js",
+    "backend:dev": "node --watch apps/backend/src/server.js",
+    "test": "node --test apps/backend/test",
+    "backend:test": "node --test apps/backend/test"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "keywords": [
+    "whatsapp",
+    "chrome-extension",
+    "brave-extension",
+    "manifest-v3",
+    "claude-ai",
+    "corporate-intelligence"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corporate Intelligence Panel</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="panel">
+
+    <!-- Header -->
+    <header class="panel-header">
+      <div class="header-title">
+        <span class="header-icon">🧠</span>
+        <h1>WA Intelligence</h1>
+      </div>
+      <div class="header-meta">
+        <span id="backend-indicator" class="backend-badge offline" title="Backend Server Status">Backend Offline</span>
+        <span class="header-version">v2.1</span>
+      </div>
+    </header>
+
+    <!-- Active Conversation Card -->
+    <section id="conversation-card" class="conversation-card" hidden>
+      <div class="conv-info">
+        <span class="conv-icon">💬</span>
+        <div class="conv-details">
+          <span id="conv-title" class="conv-title">Active Conversation</span>
+          <span id="conv-meta" class="conv-meta">Type: Unknown</span>
+        </div>
+      </div>
+      <div id="conv-badges" class="conv-badges">
+        <span id="chat-type-badge" class="badge badge-chat">Chat</span>
+        <span id="unknown-dir-badge" class="badge badge-warn" hidden>0 Unknown Direction</span>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <section class="controls">
+      <button id="extract-btn" class="btn btn-primary">
+        <span class="btn-icon">⬇</span> Extract Messages
+      </button>
+      <button id="diagnostic-btn" class="btn btn-secondary" title="Run DOM diagnostic">
+        🔬 Diagnostic
+      </button>
+    </section>
+
+    <!-- Status Bar -->
+    <div id="status-bar" class="status-bar status-idle">
+      <span id="status-text">Open a conversation on WhatsApp Web, then click Extract.</span>
+    </div>
+
+    <!-- Stats & Selection Bar (hidden until extraction runs) -->
+    <div id="stats-bar" class="stats-bar" hidden>
+      <div class="stats-counts">
+        <span class="stat"><strong id="extracted-count">0</strong> loaded</span>
+        <span class="stat-sep">•</span>
+        <span class="stat"><strong id="selected-count">0</strong> selected</span>
+      </div>
+      <div class="stats-actions">
+        <button id="select-all-btn" class="btn-link">All</button>
+        <span class="stat-sep">|</span>
+        <button id="clear-btn" class="btn-link">None</button>
+      </div>
+    </div>
+
+    <!-- Analyse Action Bar -->
+    <div id="analyze-bar" class="analyze-bar" hidden>
+      <button id="analyze-btn" class="btn btn-analyze" disabled>
+        <span class="btn-icon">✨</span>
+        <span id="analyze-btn-text">Analyse Selected (0)</span>
+      </button>
+    </div>
+
+    <!-- Analysis Progress Overlay -->
+    <div id="analysis-progress" class="analysis-progress" hidden>
+      <div class="spinner"></div>
+      <div class="progress-details">
+        <p class="progress-title">Analyzing Conversation Intelligence…</p>
+        <p class="progress-sub">Extracting decisions, action items, risks, and synthesis via local backend</p>
+      </div>
+    </div>
+
+    <!-- Diagnostic Report (hidden by default) -->
+    <details id="diagnostic-details" class="diagnostic-section" hidden>
+      <summary class="diagnostic-summary">Diagnostic Report</summary>
+      <pre id="diagnostic-output" class="diagnostic-pre"></pre>
+    </details>
+
+    <!-- Warnings / Errors Banner -->
+    <div id="warnings-banner" class="warnings-banner" hidden></div>
+
+    <!-- Tab View Switcher (visible when results exist) -->
+    <div id="view-tabs" class="view-tabs" hidden>
+      <button id="tab-messages-btn" class="tab-btn active">Messages (<span id="tab-msg-count">0</span>)</button>
+      <button id="tab-report-btn" class="tab-btn">Intelligence Report <span class="tab-dot"></span></button>
+    </div>
+
+    <!-- Message List Section -->
+    <section id="messages-section" class="messages-section">
+      <!-- Placeholder -->
+      <div id="placeholder" class="placeholder">
+        <div class="placeholder-icon">💬</div>
+        <p class="placeholder-title">No messages loaded</p>
+        <p class="placeholder-sub">Open a conversation on WhatsApp Web and click <strong>Extract Messages</strong>.</p>
+      </div>
+
+      <!-- Message items injected here by sidepanel.js -->
+      <ul id="message-list" class="message-list" hidden aria-label="Extracted messages"></ul>
+    </section>
+
+    <!-- Corporate Intelligence Results Section -->
+    <section id="results-section" class="results-section" hidden>
+      <div class="results-toolbar">
+        <button id="copy-report-btn" class="btn btn-secondary btn-sm" title="Copy markdown summary">
+          📋 Copy Summary
+        </button>
+        <button id="download-markdown-btn" class="btn btn-secondary btn-sm">Download MD</button>
+        <button id="download-csv-btn" class="btn btn-secondary btn-sm">Action CSV</button>
+        <button id="back-to-messages-btn" class="btn btn-secondary btn-sm">
+          ← View Messages
+        </button>
+      </div>
+
+      <div id="report-content" class="report-content">
+        <!-- Rendered dynamically by sidepanel.js -->
+      </div>
+    </section>
+
+  </div>
+
+  <script src="report-export.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

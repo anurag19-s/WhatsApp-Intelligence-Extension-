@@ -1,0 +1,16 @@
+{
+  "name": "wa-corporate-intelligence-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local secure Node.js backend for WA Corporate Intelligence",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

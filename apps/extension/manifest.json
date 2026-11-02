@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "WA Corporate Intelligence",
+  "version": "0.1.0",
+  "description": "Extract user-selected WhatsApp Web messages and generate structured corporate summaries.",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
+      "js": [
+        "src/content/dom-inspector.js",
+        "src/content/extractor.js",
+        "src/content/content-script.js"
+      ],
+      "css": [
+        "src/content/content-style.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "WA Corporate Intelligence",
+    "default_popup": "src/popup/popup.html"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/sidepanel.html"
+  }
+}
+
