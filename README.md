@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # WA Corporate Intelligence
 
 WA Corporate Intelligence is a Manifest V3 extension for Chrome and Brave with a loopback-only Node.js backend. It extracts text from the currently rendered WhatsApp Web conversation, lets you review/select messages, and analyzes only the selection after you explicitly click **Analyse Selected**.
@@ -67,3 +68,7 @@ The backend permits browser-origin requests only from Chromium extension origins
 | `OLLAMA_MODEL` | `qwen2.5:3b` | Local Ollama model name |
 | `AI_TIMEOUT_MS` | `45000` | AI request timeout (set `120000` for Ollama) |
 | `AI_ALLOW_MOCK_FALLBACK` | `false` | Explicitly permit mock report after Anthropic failure |
+=======
+# WhatsApp-Intelligence-Extension-
+A privacy-focused Chromium extension that transforms selected WhatsApp Web messages into structured corporate intelligence reports using local AI (Ollama). Extract key discussions, decisions, action items, deadlines, and business insights with Markdown and CSV exports.
+>>>>>>> origin/main
