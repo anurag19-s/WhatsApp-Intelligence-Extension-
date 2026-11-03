@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # WA Corporate Intelligence
 
 WA Corporate Intelligence is a Manifest V3 extension for Chrome and Brave with a loopback-only Node.js backend. It extracts text from the currently rendered WhatsApp Web conversation, lets you review/select messages, and analyzes only the selection after you explicitly click **Analyse Selected**.
